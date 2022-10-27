@@ -4,7 +4,11 @@ import android.content.ClipData
 import android.content.Context
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.text.method.ScrollingMovementMethod
 import android.util.Log
+import android.view.ActionMode
+import android.view.Menu
+import android.view.MenuItem
 import android.view.View
 import android.widget.*
 import androidx.fragment.app.Fragment
@@ -12,12 +16,11 @@ import com.google.android.material.bottomnavigation.BottomNavigationView
 import fragments.DistanceFragment
 import fragments.TimeFragment
 import fragments.WeightFragment
+import java.util.*
 
 class MainActivity : AppCompatActivity() {
 
     private val distanceFragment = DistanceFragment()
-    private val weightFragment = WeightFragment()
-    private val timeFragment = TimeFragment()
     lateinit var bottom_navigation : BottomNavigationView
     private lateinit var clipboardManager: android.content.ClipboardManager
     lateinit var convertFrom: String
@@ -135,8 +138,16 @@ class MainActivity : AppCompatActivity() {
 
     private fun update(){
         if(inputFrom.isNotEmpty() && isActiveInputFrom){
-            inputTo = ((inputFrom.toBigDecimal() * convertibleValues[convertFrom]!!.toBigDecimal()) / (convertibleValues[convertTo]!!.toBigDecimal())).toString()
+            Formatter.BigDecimalLayoutForm.SCIENTIFIC
+            val res = (inputFrom.toBigDecimal()) * (convertibleValues[convertFrom]!! / convertibleValues[convertTo]!!).toBigDecimal()
+            inputTo = res.toPlainString()
+//            if (!commaActivated) {
+//                inputTo = StringBuilder(inputTo).deleteRange(inputTo.length - 1, inputTo.length).toString()
+//            }
             output.setText(inputTo)
+        }
+        else{
+            output.setText("")
         }
 
         Log.i("mko", "Count")
@@ -144,8 +155,8 @@ class MainActivity : AppCompatActivity() {
 
     fun onDigit(view: View) {
         if(isActiveInputFrom){
-            if (inputFrom.length < 12 || (inputFrom.length == 12 && commaActivated)){
-                val res = (input as EditText).selectionStart
+            val res = (input as EditText).selectionStart
+            if (inputFrom.length < 16 || (inputFrom.length == 16 && commaActivated)){
                 if (inputFrom == "0"){
                     if(res != 0){
                         inputFrom = (view as Button).text.toString()
@@ -165,14 +176,44 @@ class MainActivity : AppCompatActivity() {
                 }
 
             }
+            else if(inputFrom.length == 17 && inputFrom.endsWith('0') && res!=17 && commaActivated){
+                inputFrom = StringBuilder(inputFrom).deleteRange(16, 17).toString()
+                inputFrom = StringBuilder(inputFrom).insert(res,(view as Button).text.toString()).toString()
+                input.setText(inputFrom)
+                (input as EditText).setSelection(res + 1)
+                update()
+
+            }
+            else {
+                Toast.makeText(this, "too big, senpai", Toast.LENGTH_SHORT).show()
+            }
         }
         update()
+    }
+
+    private fun forbidActions(mEditText: TextView){
+        mEditText.customSelectionActionModeCallback = object : ActionMode.Callback{
+            override fun onCreateActionMode(p0: ActionMode?, p1: Menu?): Boolean {
+                return false
+            }
+
+            override fun onPrepareActionMode(p0: ActionMode?, p1: Menu?): Boolean {
+                return false
+            }
+
+            override fun onActionItemClicked(p0: ActionMode?, p1: MenuItem?): Boolean {
+                return true
+            }
+
+            override fun onDestroyActionMode(p0: ActionMode?) {}
+        }
     }
 
     private fun initInput() {
         Log.i("CURENCY", "initINPUT")
         val editTextFrom = findViewById<EditText>(R.id.input_text)
         editTextFrom.hint = "0.0"
+        forbidActions(editTextFrom)
         editTextFrom.setText("")
         editTextFrom.showSoftInputOnFocus = false;
         input = editTextFrom
@@ -188,14 +229,17 @@ class MainActivity : AppCompatActivity() {
         output.setText("")
 
         isActiveInputFrom = true
+
+        val tv = findViewById<View>(R.id.output_text) as TextView
+        tv.movementMethod = ScrollingMovementMethod()
     }
 
     fun onZero(view: View){
-        if(inputFrom.length<12 || (inputFrom.length == 12 && commaActivated)) {
+        if(inputFrom.length<16 || (inputFrom.length == 16 && commaActivated)) {
             if (isActiveInputFrom) {
                 val res = (input as EditText).selectionStart
                 if (inputFrom.length == 0 || (res != 0 && !(inputFrom[0] == '0' && res == 1 ))) {
-                    if ((view as Button).text.toString() == "00" && inputFrom.length<11 && inputFrom.length != 0 || (inputFrom.length == 11 && commaActivated)){
+                    if ((view as Button).text.toString() == "00" && ((inputFrom.length<11 && inputFrom.length != 0) || (inputFrom.length == 11 && commaActivated))){
                         inputFrom = StringBuilder(inputFrom).insert(res, "00").toString()
                         input.setText(inputFrom)
                         (input as EditText).setSelection(res + 2)
@@ -205,29 +249,46 @@ class MainActivity : AppCompatActivity() {
                         input.setText(inputFrom)
                         (input as EditText).setSelection(res + 1)
                     }
-
+                }
+                else {
+                    Toast.makeText(this, "bad zero", Toast.LENGTH_SHORT).show()
                 }
             }
             update()
         }
+        else {
+            Toast.makeText(this, "too big, senpai", Toast.LENGTH_SHORT).show()
+        }
     }
 
     fun onDot(view: View) {
-        if (inputFrom.length < 12) {
-            if (isActiveInputFrom && !commaActivated) {
-                val res = (input as EditText).selectionStart
+        if (isActiveInputFrom && !commaActivated) {
+            val res = (input as EditText).selectionStart
+            if (inputFrom.length < 13) {
                 if (inputFrom.length == 0) {
                     inputFrom += "0."
                     input.setText(inputFrom)
                     input.setSelection(inputFrom.length)
-                } else {
+                    commaActivated = true
+                }
+                else if (inputFrom.length == 16 && res == 16){
+                    Toast.makeText(this, "too big, senpai", Toast.LENGTH_SHORT).show()
+                }
+                else {
                     inputFrom = StringBuilder(inputFrom).insert(res, ".").toString()
                     input.setText(inputFrom)
                     (input as EditText).setSelection(res + 1)
+                    commaActivated = true
                 }
                 update()
-                commaActivated = true
+
             }
+            else {
+                Toast.makeText(this, "too big, senpai", Toast.LENGTH_SHORT).show()
+            }
+        }
+        else {
+            Toast.makeText(this, "many dots", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -261,69 +322,113 @@ class MainActivity : AppCompatActivity() {
                 if (inputFrom != "") {
                     val res = (input as EditText).selectionStart
                     var temp = output.text.toString()
-                    inputFrom = temp
-                    input.setText(inputFrom)
-                    input.setSelection(res)
+                    if (temp.length>17 || (temp.length == 17 && !commaActivated)){
+                        Toast.makeText(this, "too big, senpai", Toast.LENGTH_SHORT).show()
+                    }
+                    else {
+                        inputFrom = temp
+                        input.setText(inputFrom)
+                        input.setSelection(res)
+                    }
+                    commaActivated = true
                     update()
                 }
             }
         }
         else {
-            Toast.makeText(this, "buy premium :)", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "need VIP", Toast.LENGTH_SHORT).show()
         }
     }
 
     fun vipActivated(view:View){
         if(!vipActivated){
             vipActivated = true
-            Toast.makeText(this, "premium activated", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "ty for donation", Toast.LENGTH_SHORT).show()
+        }
+        else{
+            Toast.makeText(this, "you already have VIP", Toast.LENGTH_SHORT).show()
         }
 
     }
 
     fun copyTo(view: View){
         if(!vipActivated){
-            Toast.makeText(this, "buy premium :)", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "need VIP", Toast.LENGTH_SHORT).show()
         }
         else{
             val result = findViewById<TextView>(R.id.output_text).text.toString()
             if(result.isNotEmpty()){
                 clipData = ClipData.newPlainText("saved",result)
                 clipboardManager.setPrimaryClip(clipData)
-                Toast.makeText(this, "Copied", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "copied", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
     fun copyFrom(view: View){
         if(!vipActivated){
-            Toast.makeText(this, "buy premium :)", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "need VIP", Toast.LENGTH_SHORT).show()
         }
         else{
             val result = findViewById<EditText>(R.id.input_text).text.toString()
             if(result.isNotEmpty()){
                 clipData = ClipData.newPlainText("saved",result)
                 clipboardManager.setPrimaryClip(clipData)
-                Toast.makeText(this, "Copied", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "copied", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
     fun pasteFrom(view:View){
         if(!vipActivated){
-            Toast.makeText(this, "buy premium :)", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "need VIP", Toast.LENGTH_SHORT).show()
         }
         else {
             val saved = clipboardManager.primaryClip
             val item = saved?.getItemAt(0)
-            inputFrom = item?.text.toString()
-            input.setText(inputFrom)
+            val boofData = item?.text.toString()
+            val keywords = arrayOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0", ".")
 
-            isActiveInputFrom = true
-            (input as EditText).setSelection(inputFrom.length)
-            update()
+            val match = keywords.filter { it in boofData }
 
-            Log.i("Paste", item?.text.toString())
+            if(boofData.length>17){
+                Toast.makeText(this, "too big, senpai", Toast.LENGTH_SHORT).show()
+            }
+            else{
+                var k = 0
+                var letter = false
+                for (char in boofData){
+                    if (char == '.'){
+                        k++
+                    }
+                }
+                if (k == 1){
+                    commaActivated = true
+                }
+                if(k >= 2 || (boofData.length == 17 && k == 0)){
+                    Toast.makeText(this, "many dots", Toast.LENGTH_SHORT).show()
+                }
+                else {
+                    for (char in boofData){
+                        if (char.isLetter()){
+                            letter = true
+                        }
+                    }
+                    if (!letter) {
+                        inputFrom = item?.text.toString()
+                        input.setText(inputFrom)
+
+                        isActiveInputFrom = true
+                        (input as EditText).setSelection(inputFrom.length)
+                        update()
+
+                        Log.i("Paste", item?.text.toString())
+                    }
+                    else{
+                        Toast.makeText(this, "letters are not allowed", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
         }
     }
 
