@@ -1,4 +1,4 @@
-package converter.com
+package com.example.converter
 
 import org.junit.Test
 
