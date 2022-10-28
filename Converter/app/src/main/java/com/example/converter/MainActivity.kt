@@ -264,7 +264,7 @@ class MainActivity : AppCompatActivity() {
     fun onDot(view: View) {
         if (isActiveInputFrom && !commaActivated) {
             val res = (input as EditText).selectionStart
-            if (inputFrom.length < 13) {
+            if (inputFrom.length < 17) {
                 if (inputFrom.length == 0) {
                     inputFrom += "0."
                     input.setText(inputFrom)
