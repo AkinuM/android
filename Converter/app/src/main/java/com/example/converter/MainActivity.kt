@@ -16,6 +16,7 @@ import com.google.android.material.bottomnavigation.BottomNavigationView
 import fragments.DistanceFragment
 import fragments.TimeFragment
 import fragments.WeightFragment
+import java.math.RoundingMode
 import java.util.*
 
 class MainActivity : AppCompatActivity() {
@@ -139,11 +140,14 @@ class MainActivity : AppCompatActivity() {
     private fun update(){
         if(inputFrom.isNotEmpty() && isActiveInputFrom){
             Formatter.BigDecimalLayoutForm.SCIENTIFIC
-            val res = (inputFrom.toBigDecimal()) * (convertibleValues[convertFrom]!! / convertibleValues[convertTo]!!).toBigDecimal()
+            val res = (inputFrom.toBigDecimal()) * (convertibleValues[convertFrom]!! / convertibleValues[convertTo]!!).toBigDecimal().setScale(6, RoundingMode.HALF_DOWN)
             inputTo = res.toPlainString()
-//            if (!commaActivated) {
-//                inputTo = StringBuilder(inputTo).deleteRange(inputTo.length - 1, inputTo.length).toString()
-//            }
+            while (inputTo.last() == '0') {
+                inputTo = StringBuilder(inputTo).deleteRange(inputTo.length - 1, inputTo.length).toString()
+            }
+            if (inputTo.last() == '.') {
+                inputTo = StringBuilder(inputTo).deleteRange(inputTo.length - 1, inputTo.length).toString()
+            }
             output.setText(inputTo)
         }
         else{
@@ -239,7 +243,7 @@ class MainActivity : AppCompatActivity() {
             if (isActiveInputFrom) {
                 val res = (input as EditText).selectionStart
                 if (inputFrom.length == 0 || (res != 0 && !(inputFrom[0] == '0' && res == 1 ))) {
-                    if ((view as Button).text.toString() == "00" && ((inputFrom.length<11 && inputFrom.length != 0) || (inputFrom.length == 11 && commaActivated))){
+                    if ((view as Button).text.toString() == "00" && ((inputFrom.length<15 && inputFrom.length != 0) || (inputFrom.length == 15 && commaActivated))){
                         inputFrom = StringBuilder(inputFrom).insert(res, "00").toString()
                         input.setText(inputFrom)
                         (input as EditText).setSelection(res + 2)
