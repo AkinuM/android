@@ -35,6 +35,15 @@ class MainActivity : AppCompatActivity() {
     private var vipActivated = false
     lateinit var clipData: ClipData
     private var savedCopy: String = ""
+    private lateinit var limitToast : Toast
+    private lateinit var copyToast : Toast
+    private lateinit var pasteToast : Toast
+    private lateinit var zeroToast : Toast
+    private lateinit var dotToast : Toast
+    private lateinit var vip1Toast : Toast
+    private lateinit var vip2Toast : Toast
+    private lateinit var needVipToast : Toast
+    private lateinit var letterToast : Toast
     private val convertibleValues:Map<String, Double> = mapOf(
         "M" to 1.0, "Cm" to 0.01,
         "Km" to 1000.0,
@@ -52,6 +61,15 @@ class MainActivity : AppCompatActivity() {
         replaceFragment(distanceFragment)
         setChooseMenu(R.array.distance)
         initInput()
+        limitToast = Toast.makeText(applicationContext, "too big, senpai", Toast.LENGTH_SHORT)
+        copyToast = Toast.makeText(applicationContext, "copied", Toast.LENGTH_SHORT)
+        pasteToast = Toast.makeText(applicationContext, "pasted", Toast.LENGTH_SHORT)
+        zeroToast = Toast.makeText(applicationContext, "bad zero", Toast.LENGTH_SHORT)
+        dotToast = Toast.makeText(applicationContext, "many dots", Toast.LENGTH_SHORT)
+        vip1Toast = Toast.makeText(applicationContext, "ty for donation", Toast.LENGTH_SHORT)
+        vip2Toast = Toast.makeText(applicationContext, "already activated", Toast.LENGTH_SHORT)
+        needVipToast = Toast.makeText(applicationContext, "need VIP", Toast.LENGTH_SHORT)
+        letterToast = Toast.makeText(applicationContext, "letters are not allowed", Toast.LENGTH_SHORT)
 
         bottom_navigation = findViewById(R.id.bottom_navigation) as BottomNavigationView
         bottom_navigation.setOnNavigationItemSelectedListener {
@@ -60,18 +78,21 @@ class MainActivity : AppCompatActivity() {
                     replaceFragment(DistanceFragment())
                     setChooseMenu(R.array.distance)
                     initInput()
+                    commaActivated = false
                     return@setOnNavigationItemSelectedListener true
                 }
                 R.id.weight -> {
                     replaceFragment(WeightFragment())
                     setChooseMenu(R.array.weight)
                     initInput()
+                    commaActivated = false
                     return@setOnNavigationItemSelectedListener true
                 }
                 R.id.time -> {
                     replaceFragment(TimeFragment())
                     setChooseMenu(R.array.time)
                     initInput()
+                    commaActivated = false
                     return@setOnNavigationItemSelectedListener true
                 }
                 else -> {return@setOnNavigationItemSelectedListener false}
@@ -142,6 +163,9 @@ class MainActivity : AppCompatActivity() {
             Formatter.BigDecimalLayoutForm.SCIENTIFIC
             val res = (inputFrom.toBigDecimal()) * (convertibleValues[convertFrom]!! / convertibleValues[convertTo]!!).toBigDecimal().setScale(6, RoundingMode.HALF_DOWN)
             inputTo = res.toPlainString()
+            while (inputTo.first() == '0' && !commaActivated && inputTo.length > 1) {
+                inputTo = StringBuilder(inputTo).deleteRange(0, 1).toString()
+            }
             while (inputTo.last() == '0') {
                 inputTo = StringBuilder(inputTo).deleteRange(inputTo.length - 1, inputTo.length).toString()
             }
@@ -189,7 +213,7 @@ class MainActivity : AppCompatActivity() {
 
             }
             else {
-                Toast.makeText(this, "too big, senpai", Toast.LENGTH_SHORT).show()
+                limitToast.show()
             }
         }
         update()
@@ -217,6 +241,7 @@ class MainActivity : AppCompatActivity() {
         Log.i("CURENCY", "initINPUT")
         val editTextFrom = findViewById<EditText>(R.id.input_text)
         editTextFrom.hint = "0.0"
+        editTextFrom.isLongClickable = false
         forbidActions(editTextFrom)
         editTextFrom.setText("")
         editTextFrom.showSoftInputOnFocus = false;
@@ -254,14 +279,19 @@ class MainActivity : AppCompatActivity() {
                         (input as EditText).setSelection(res + 1)
                     }
                 }
+                else if (res == 0 && inputFrom.first() == '.'){
+                    inputFrom = StringBuilder(inputFrom).insert(res, "0").toString()
+                    input.setText(inputFrom)
+                    (input as EditText).setSelection(res + 1)
+                }
                 else {
-                    Toast.makeText(this, "bad zero", Toast.LENGTH_SHORT).show()
+                    zeroToast.show()
                 }
             }
             update()
         }
         else {
-            Toast.makeText(this, "too big, senpai", Toast.LENGTH_SHORT).show()
+            limitToast.show()
         }
     }
 
@@ -276,7 +306,7 @@ class MainActivity : AppCompatActivity() {
                     commaActivated = true
                 }
                 else if (inputFrom.length == 16 && res == 16){
-                    Toast.makeText(this, "too big, senpai", Toast.LENGTH_SHORT).show()
+                   limitToast.show()
                 }
                 else {
                     inputFrom = StringBuilder(inputFrom).insert(res, ".").toString()
@@ -288,11 +318,11 @@ class MainActivity : AppCompatActivity() {
 
             }
             else {
-                Toast.makeText(this, "too big, senpai", Toast.LENGTH_SHORT).show()
+                limitToast.show()
             }
         }
         else {
-            Toast.makeText(this, "many dots", Toast.LENGTH_SHORT).show()
+            dotToast.show()
         }
     }
 
@@ -309,11 +339,27 @@ class MainActivity : AppCompatActivity() {
         if(isActiveInputFrom){
             if(res != 0) {
                 inputFrom = StringBuilder(inputFrom).deleteRange(res - 1, res).toString()
-                input.setText(inputFrom)
-                (input as EditText).setSelection(res - 1)
-
+                if (inputFrom != "" && inputFrom.first() == '.'){
+                    inputFrom = StringBuilder(inputFrom).insert(0, "0").toString()
+                }
                 if (!inputFrom.contains(".")) {
                     commaActivated = false
+                }
+                if (commaActivated){
+                    if(inputFrom.length > 1){
+                        while (inputFrom.first() == '0' && inputFrom[1] == '0'){
+                            inputFrom = StringBuilder(inputFrom).deleteRange(0, 1).toString()
+                        }
+                    }
+                }
+                else {
+                    while(inputFrom != "" && inputFrom.first() == '0'){
+                        inputFrom = StringBuilder(inputFrom).deleteRange(0, 1).toString()
+                    }
+                }
+                input.setText(inputFrom)
+                if (inputFrom != ""){
+                    (input as EditText).setSelection(res - 1)
                 }
             }
         }
@@ -327,7 +373,7 @@ class MainActivity : AppCompatActivity() {
                     val res = (input as EditText).selectionStart
                     var temp = output.text.toString()
                     if (temp.length>17 || (temp.length == 17 && !commaActivated)){
-                        Toast.makeText(this, "too big, senpai", Toast.LENGTH_SHORT).show()
+                        limitToast.show()
                     }
                     else {
                         inputFrom = temp
@@ -340,52 +386,52 @@ class MainActivity : AppCompatActivity() {
             }
         }
         else {
-            Toast.makeText(this, "need VIP", Toast.LENGTH_SHORT).show()
+            needVipToast.show()
         }
     }
 
     fun vipActivated(view:View){
         if(!vipActivated){
             vipActivated = true
-            Toast.makeText(this, "ty for donation", Toast.LENGTH_SHORT).show()
+            vip1Toast.show()
         }
         else{
-            Toast.makeText(this, "you already have VIP", Toast.LENGTH_SHORT).show()
+            vip2Toast.show()
         }
 
     }
 
     fun copyTo(view: View){
         if(!vipActivated){
-            Toast.makeText(this, "need VIP", Toast.LENGTH_SHORT).show()
+            needVipToast.show()
         }
         else{
             val result = findViewById<TextView>(R.id.output_text).text.toString()
             if(result.isNotEmpty()){
                 clipData = ClipData.newPlainText("saved",result)
                 clipboardManager.setPrimaryClip(clipData)
-                Toast.makeText(this, "copied", Toast.LENGTH_SHORT).show()
+               copyToast.show()
             }
         }
     }
 
     fun copyFrom(view: View){
         if(!vipActivated){
-            Toast.makeText(this, "need VIP", Toast.LENGTH_SHORT).show()
+            needVipToast.show()
         }
         else{
             val result = findViewById<EditText>(R.id.input_text).text.toString()
             if(result.isNotEmpty()){
                 clipData = ClipData.newPlainText("saved",result)
                 clipboardManager.setPrimaryClip(clipData)
-                Toast.makeText(this, "copied", Toast.LENGTH_SHORT).show()
+                copyToast.show()
             }
         }
     }
 
     fun pasteFrom(view:View){
         if(!vipActivated){
-            Toast.makeText(this, "need VIP", Toast.LENGTH_SHORT).show()
+            needVipToast.show()
         }
         else {
             val saved = clipboardManager.primaryClip
@@ -396,7 +442,7 @@ class MainActivity : AppCompatActivity() {
             val match = keywords.filter { it in boofData }
 
             if(boofData.length>17){
-                Toast.makeText(this, "too big, senpai", Toast.LENGTH_SHORT).show()
+                limitToast.show()
             }
             else{
                 var k = 0
@@ -406,11 +452,8 @@ class MainActivity : AppCompatActivity() {
                         k++
                     }
                 }
-                if (k == 1){
-                    commaActivated = true
-                }
                 if(k >= 2 || (boofData.length == 17 && k == 0)){
-                    Toast.makeText(this, "many dots", Toast.LENGTH_SHORT).show()
+                    dotToast.show()
                 }
                 else {
                     for (char in boofData){
@@ -425,11 +468,14 @@ class MainActivity : AppCompatActivity() {
                         isActiveInputFrom = true
                         (input as EditText).setSelection(inputFrom.length)
                         update()
-
+                        pasteToast.show()
+                        if (k == 1){
+                            commaActivated = true
+                        }
                         Log.i("Paste", item?.text.toString())
                     }
                     else{
-                        Toast.makeText(this, "letters are not allowed", Toast.LENGTH_SHORT).show()
+                        letterToast.show()
                     }
                 }
             }
@@ -448,8 +494,9 @@ class MainActivity : AppCompatActivity() {
         convertFrom = sConvertFrom.selectedItem.toString()
         convertTo = sConvertTo.selectedItem.toString()
 
-        inputFrom = savedInstanceState.getString("inputFrom").toString()
+        commaActivated = savedInstanceState.getBoolean("comma")
 
+        inputFrom = savedInstanceState.getString("inputFrom").toString()
 
         inputTo = savedInstanceState.getString("inputTo").toString()
 
@@ -478,6 +525,7 @@ class MainActivity : AppCompatActivity() {
         savedInstanceState.putInt("opened_fragment", bottom_navigation.selectedItemId)
 
         savedInstanceState.putInt("pointer", input.selectionStart)
+        savedInstanceState.putBoolean("comma", commaActivated)
 
         super.onSaveInstanceState(savedInstanceState);
     }
